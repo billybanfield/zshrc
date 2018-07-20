@@ -3,6 +3,10 @@
 # @license    http://opensource.org/licenses/gpl-license.php
 #
 # darwin specific fixes / alignments
+#
+# The OSX way for ls colors.
+export CLICOLOR=1
+export LSCOLORS="gxfxcxdxbxegedabagacad"
 
 # brew install zsh-completions
 export FPATH=/usr/local/share/zsh-completions:/usr/local/share/zsh/functions:$FPATH
