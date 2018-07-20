@@ -13,6 +13,8 @@ if [[ -d "$functionsd" ]] {
 }
 
 # load completions system
+autoload -U compinit
+compinit
 zmodload -i zsh/complist
 
 # auto rehash commands
@@ -39,50 +41,84 @@ zstyle ':completion:*' completer _complete _correct _approximate
 # (1 error on 3 characters)
 zstyle -e ':completion:*:approximate:*' max-errors 'reply=( $(( ($#PREFIX+$#SUFFIX)/3 )) numeric )'
 
-# case insensitivity
-#zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
-zstyle ":completion:*" matcher-list 'm:{A-Zöäüa-zÖÄÜ}={a-zÖÄÜA-Zöäü}'
 
-# for all completions: grouping / headline / ...
-zstyle ':completion:*:messages' format $'\e[01;35m -- %d -- \e[00;00m'
-zstyle ':completion:*:warnings' format $'\e[01;31m -- No Matches Found -- \e[00;00m'
-zstyle ':completion:*:descriptions' format $'\e[01;33m -- %d -- \e[00;00m'
-zstyle ':completion:*:corrections' format $'\e[01;33m -- %d -- \e[00;00m'
+# allow one error for every three characters typed
+zstyle ':completion:*:approximate:'    max-errors 'reply=( $((($#PREFIX+$#SUFFIX)/3 )) numeric )'
 
-# statusline for many hits
-zstyle ':completion:*:default' select-prompt $'\e[01;35m -- Match %M    %P -- \e[00;00m'
+# start menu completion only if it could find no unambiguous initial string
+zstyle ':completion:*:correct:*'       insert-unambiguous true
+zstyle ':completion:*:corrections'     format $'\e[01;33m -- %d -- \e[00;00m'
+zstyle ':completion:*:correct:*'       original true
 
-# for all completions: show comments when present
-zstyle ':completion:*' verbose yes
+# activate color-completion
+zstyle ':completion:*:default'         list-colors ${(s.:.)LS_COLORS}
 
-# in menu selection strg+space to go to subdirectories
-bindkey -M menuselect '^@' accept-and-infer-next-history
+# format on completion
+zstyle ':completion:*:descriptions'    format $'\e[01;33m -- %d -- \e[00;00m'
 
-# case-insensitive -> partial-word (cs) -> substring completion:
-zstyle ':completion:*' matcher-list 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'  
+zstyle ':completion:*:expand:*'        tag-order all-expansions
+zstyle ':completion:*:history-words'   list false
+zstyle ':completion:*:history-words'   menu yes
+zstyle ':completion:*:history-words'   remove-all-dups yes
+zstyle ':completion:*:history-words'   stop yes
 
-# caching of completion stuff
-zstyle ':completion:*' use-cache on
-zstyle ':completion:*' cache-path "$ZSH_CACHE"
+zstyle ':completion:*'                 matcher-list 'm:{a-z}={A-Z}'
+zstyle ':completion:*:matches'         group 'yes'
+zstyle ':completion:*'                 group-name ''
+zstyle ':completion:*'                 menu select=5
+zstyle ':completion:*:messages'        format $'\e[01;35m -- %d -- \e[00;00m'
+zstyle ':completion:*:options'         auto-description '%d'
+zstyle ':completion:*:options'         description 'yes'
 
+# on processes completion complete all user processes
+zstyle ':completion:*:processes'       command 'ps -au$USER'
 
-# ~dirs: reorder output sorting: named dirs over userdirs
-zstyle ':completion::*:-tilde-:*:*' group-order named-directories users
+# offer indexes before parameters in subscripts
+zstyle ':completion:*:*:-subscript-:*' tag-order indexes parameters
 
-# ssh: reorder output sorting: user over hosts
-zstyle ':completion::*:ssh:*:*' tag-order "users hosts"
+zstyle ':completion:*'                 verbose true
+zstyle ':completion:*:-command-:*:'    verbose false
 
-# kill: advanced kill completion
-zstyle ':completion::*:kill:*:*' command 'ps xf -U $USER -o pid,%cpu,cmd'
-zstyle ':completion::*:kill:*:processes' list-colors '=(#b) #([0-9]#)*=0=01;32'
+zstyle ':completion:*:warnings'        format $'\e[01;31m -- No Matches Found -- \e[00;00m'
+zstyle ':completion:correct:'          prompt 'correct to: %e'
 
-# rm: advanced completion (e.g. bak files first)
-zstyle ':completion::*:rm:*:*' file-patterns '*.o:object-files:object\ file *(~|.(old|bak|BAK)):backup-files:backup\ files *~*(~|.(o|old|bak|BAK)):all-files:all\ files'
+# Ignore completion functions for commands you don't have:
+zstyle ':completion::(^approximate*):*:functions' ignored-patterns '_*'
 
-# vi: advanced completion (e.g. tex and rc files first)
-zstyle ':completion::*:vi:*:*' file-patterns 'Makefile|*(rc|log)|*.(php|tex|bib|sql|zsh|ini|sh|vim|rb|sh|js|tpl|csv|rdf|txt|phtml|tex|py|n3):vi-files:vim\ likes\ these\ files *~(Makefile|*(rc|log)|*.(log|rc|php|tex|bib|sql|zsh|ini|sh|vim|rb|sh|js|tpl|csv|rdf|txt|phtml|tex|py|n3)):all-files:other\ files'
+zstyle ':completion:*:processes-names' command 'ps c -u ${USER} -o command | uniq'
+zstyle ':completion:*:manuals'    separate-sections true
+zstyle ':completion:*:manuals.*'  insert-sections   true
+zstyle ':completion:*:man:*'      menu yes select
+zstyle ':completion:*:sudo:*' command-path /usr/local/sbin /usr/local/bin /usr/sbin /usr/bin /sbin /bin
+zstyle ':completion:*' special-dirs true
+zstyle ':completion:*' rehash true
 
-zstyle :compinstall filename '~/.zshrc'
+zstyle ':completion:*' users lucasem root
 
-autoload -Uz compinit && compinit
+## correction
+setopt correct
+zstyle -e ':completion:*' completer '
+    if [[ $_last_try != "$HISTNO$BUFFER$CURSOR" ]] ; then
+        _last_try="$HISTNO$BUFFER$CURSOR"
+        reply=(_complete _match _ignored _prefix _files)
+    else
+        if [[ $words[1] == (rm|mv) ]] ; then
+            reply=(_complete _files)
+        else
+            reply=(_oldlist _expand _complete _ignored _correct _approximate _files)
+        fi
+    fi'
 
+zstyle ':completion:*'            use-cache  yes
+zstyle ':completion:*:complete:*' cache-path "$ZSH_CACHE"
+
+# host completion
+[[ -r ~/.ssh/config ]] && _ssh_config_hosts=(${${(s: :)${(ps:\t:)${${(@M)${(f)"$(<$HOME/.ssh/config)"}:#Host *}#Host }}}:#*[*?]*}) || _ssh_config_hosts=()
+[[ -r ~/.ssh/known_hosts ]] && _ssh_hosts=(${(R)${${${${(f)"$(<$HOME/.ssh/known_hosts)"}:#[\|]*}%%\ *}%%,*}:#[0-9]*}) || _ssh_hosts=()
+hosts=(
+    $(hostname)
+    $_ssh_config_hosts[@]
+    $_ssh_hosts[@]
+    localhost
+)
+zstyle ':completion:*:hosts' hosts $hosts
