@@ -56,3 +56,7 @@ alias -g C='| wc -l'
 
 # update
 alias up="pacaur -Syu"
+
+# docker
+alias dcu="docker-compose up -d"
+alias dcd="docker-compose down"
