@@ -10,8 +10,6 @@ zstyle ':vcs_info:*' formats '%s|%b|%a|%i|%R|%r|%S|%m'
 # my prompt theme
 function promptSetup () {
     setopt prompt_subst
-    local TERMWIDTH
-    (( TERMWIDTH = ${COLUMNS} - 1 ))
 
     local LAST_ERROR=%(?..〈%B%F{1}%?%f%b〉)
 
